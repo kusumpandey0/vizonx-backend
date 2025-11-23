@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const Blog = require("../models/blog.model");
-const multer = require("multer");
 const sanitize = require("sanitize-html");
 const path = require("path");
 const fs = require("fs"); // Import fs module for file system operations
@@ -96,7 +95,7 @@ router.post("/blogpost", upload.single("thumbnail"), async (req, res) => {
     // ✅ Save blog post
     const blog = new Blog({
       title,
-      thumbnail,
+      thumbnail: thumbnailUrl,
       content: sanitizedContent,
     });
 

@@ -1,6 +1,6 @@
 const express = require("express");
-const app = express();
 const dotenv = require("dotenv");
+const app = express();
 dotenv.config();
 const cors = require("cors");
 const connectToDb = require("./connections/index");
@@ -15,10 +15,11 @@ const blogRoutes = require("./routes/blog.js");
 app.use("/api/blog", blogRoutes);
 
 //database connectiona and starting the server
-const URL = process.env.MONGO_URL;
-connectToDb(URL);
+const URL = process.env.MONGODB_URI;
+console.log(process.env.PORT);
 const PORT = process.env.PORT || 8000;
 const server = app.listen(PORT, () => {
+  connectToDb(URL);
   console.log(`${PORT} listened`);
 });
 
