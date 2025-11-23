@@ -1,75 +1,24 @@
 const express = require("express");
 const router = express.Router();
 const Blog = require("../models/blog.model");
-const multer = require("multer");
 const sanitize = require("sanitize-html");
-const path = require("path");
-const fs = require("fs"); // Import fs module for file system operations
-const { saveBase64Image } = require("../middleware/base64multer");
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = "uploads";
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-      console.log(`Created uploads directory at ${dir} for this request`);
-    }
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  },
-});
-
-const upload = multer({
-  storage,
-  fileFilter: (req, file, cb) => {
-    const filetypes = /jpeg|jpg|png|gif/;
-    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = filetypes.test(file.mimetype);
-    if (extname && mimetype) {
-      return cb(null, true);
-    }
-    cb(new Error("Only images (jpeg, jpg, png, gif) are allowed"));
-  },
-});
-
-// Ensure uploads folder exists
-const ensureUploadsFolder = () => {
-  const dir = "uploads";
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-    console.log(`Created uploads directory at ${dir}`);
-  }
-};
-ensureUploadsFolder();
+const { uploadToCloudinary, upload } = require("../middleware/cloudinary");
 
 
 // ✅ Handle both thumbnail and rich text images
 router.post("/blogpost", upload.single("thumbnail"), async (req, res) => {
   try {
     const { title, content } = req.body;
-    const thumbnail = req.file ? `/uploads/${req.file.filename}` : null;
 
     if (!title || !content) {
       return res.status(400).json({ error: "Title and content are required" });
     }
 
-   // ✅ Find all base64 images and replace them
-const base64Regex = /data:image\/([a-z]+);base64,([A-Za-z0-9+/=]+)/g;
-const matches = [...content.matchAll(base64Regex)];
-
 let processedContent = content;
 
-for (const match of matches) {
-  const base64String = match[0]; // full base64 string
-  try {
-    const savedImage = await saveBase64Image(base64String, "RichText");
-    processedContent = processedContent.replace(base64String, savedImage.url);
-  } catch (err) {
-    console.error("Failed to save base64 image:", err.message);
-  }
-}
+const thumbnailUrl = req.file
+      ? await uploadToCloudinary(req.file.path)
+      : null;
 
     // ✅ Sanitize final content
     const sanitizedContent = sanitize(processedContent, {
@@ -96,7 +45,7 @@ for (const match of matches) {
     // ✅ Save blog post
     const blog = new Blog({
       title,
-      thumbnail,
+      thumbnail: thumbnailUrl,
       content: sanitizedContent,
     });
 

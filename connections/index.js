@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 
-const connectDB = async () => {
+const connectDB = async (url) => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
+    await mongoose.connect(url);
     console.log('MongoDB Atlas connected successfully');
   } catch (error) {
     console.error('MongoDB Atlas connection error:', error);
