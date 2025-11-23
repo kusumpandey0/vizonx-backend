@@ -1,21 +1,12 @@
-const fs = require("fs").promises;
-const path = require("path");
-async function ensureDir(dir) {
-  try {
-    await fs.access(dir);
-  } catch (err) {
-    if (err.code === "ENOENT") {
-      await fs.mkdir(dir, { recursive: true });
-      console.log("Created directory:", dir);
-    }
-  }
-}
+const cloudinary = require("../config/cloudinary");
+
+// Your original config (kept same)
 const uploadFieldsConfig = {
   RichText: {
-    maxCount: 6, // Max 6 files (corrected comment from "Max 1 file")
-    allowedTypes: ["image/png", "image/jpeg", "image/jpg"], // Only images
-    imageStoragePath: "uploads/richtext/image", // Storage folder
-    maxVideos: 0, // No videos allowed
+    maxCount: 6,
+    allowedTypes: ["image/png", "image/jpeg", "image/jpg"],
+    imageStoragePath: "blog/richtext", // Cloudinary folder now
+    maxVideos: 0,
   },
 };
 
@@ -23,30 +14,30 @@ async function saveBase64Image(base64String, fieldName) {
   const fieldConfig = uploadFieldsConfig[fieldName];
   if (!fieldConfig) throw new Error(`Unknown field: ${fieldName}`);
 
+  // Match: data:image/png;base64,XXXXX
   const matches = base64String.match(/^data:image\/([a-z]+);base64,(.+)$/);
   if (!matches || matches.length !== 3)
     throw new Error("Invalid Base64 image format");
 
   const mimeType = `image/${matches[1]}`;
-  const imageData = matches[2];
+  const base64Data = matches[0]; // Keep full data:image/... string for Cloudinary
+
+  // Validate type like before
   if (!fieldConfig.allowedTypes.includes(mimeType)) {
     throw new Error(
       `${fieldName} only accepts: ${fieldConfig.allowedTypes.join(", ")}`
     );
   }
 
-  const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-  const ext = matches[1];
-  const fileName = `${fieldName}-${uniqueSuffix}.${ext}`;
-  const uploadPath = path.join(fieldConfig.imageStoragePath, fileName);
-
-  await ensureDir(fieldConfig.imageStoragePath);
-  await fs.writeFile(uploadPath, Buffer.from(imageData, "base64"));
+  // Upload to Cloudinary
+  const uploadResult = await cloudinary.uploader.upload(base64Data, {
+    folder: fieldConfig.imageStoragePath, // uses your config folder
+  });
 
   return {
-    fileName,
-    filePath: uploadPath,
-    url: `${fieldConfig.imageStoragePath}/${fileName}`,
+    fileName: uploadResult.public_id,
+    filePath: uploadResult.secure_url,
+    url: uploadResult.secure_url, // returned to frontend
   };
 }
 
