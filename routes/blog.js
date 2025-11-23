@@ -6,12 +6,13 @@ const path = require("path");
 const fs = require("fs"); // Import fs module for file system operations
 const { saveBase64Image } = require("../middleware/base64multer");
 const cloudinary = require("../config/cloudinary");
+const multer = require("multer");
 
 const upload = multer({
-storage:multer.memoryStorage(),
+  storage: multer.memoryStorage(),
   limits: {
     fieldSize: 10 * 1024 * 1024, // allow 10MB text fields
-    fileSize: 5 * 1024 * 1024,   // allow 5MB image upload
+    fileSize: 5 * 1024 * 1024, // allow 5MB image upload
   },
 });
 
@@ -56,46 +57,75 @@ router.post("/blogpost", upload.single("thumbnail"), async (req, res) => {
     }
 
     // ✅ Sanitize final content
-    const sanitizedContent = sanitize(processedContent, {
-      allowedTags: sanitize.defaults.allowedTags.concat([
-        "ul",
-        "ol",
-        "li",
-        "img",
-        "p",
-        "h1",
-        "h2",
-        "h3",
-        "h4",
-        "h5",
-        "h6",
-        "table",
-        "tr",
-        "td",
-      ]),
-      allowedAttributes: {
-        ...sanitize.defaults.allowedAttributes,
-        "*": ["style", "class"],
-        img: ["src", "alt"],
-        a: ["href", "target"],
-      },
-      allowedStyles: {
-        "*": {
-          "text-align": [/^(left|center|right|justify)$/],
-          float: [/^(left|right)$/],
-          "margin-left": [/^\d+(px|%)$/],
-          "margin-right": [/^\d+(px|%)$/],
-          "list-style-type": [
-            /^(disc|circle|square|decimal|lower-roman|upper-roman|lower-alpha|upper-alpha)$/,
-          ],
-        },
-      },
-    });
+const sanitizedContent = sanitize(processedContent, {
+  allowedTags: sanitize.defaults.allowedTags.concat([
+    "img",
+    "figure",
+    "figcaption",
+    "span",
+    "div",
+    "p",
+    "ul",
+    "ol",
+    "li",
+    "table",
+    "thead",   // added
+    "tbody",   // added
+    "tr",
+    "td",
+    "th",      // added
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+  ]),
+
+  allowedAttributes: {
+    ...sanitize.defaults.allowedAttributes,
+
+    "*": ["style", "class"],
+
+    img: ["src", "alt"],
+
+    a: ["href", "target"],
+
+    // 🔥 Added table-related attribute support (nothing removed)
+    figure: ["class", "style"],
+    table: ["class", "style"],
+    thead: ["class", "style"],
+    tbody: ["class", "style"],
+    tr: ["class", "style"],
+    td: ["class", "style"],
+    th: ["class", "style"],
+  },
+
+  allowedStyles: {
+    "*": {
+      "text-align": [/^(left|center|right|justify)$/],
+      float: [/^(left|right)$/],
+      width: [/^\d+(px|%)$/],
+      height: [/^\d+(px|%)$/],
+      "max-width": [/^\d+(px|%)$/],
+      margin: [/^\d+(px|%)$/],
+      "margin-left": [/^\d+(px|%)$/],
+      "margin-right": [/^\d+(px|%)$/],
+      "list-style-type": [
+        /^(disc|circle|square|decimal|lower-roman|upper-roman|lower-alpha|upper-alpha)$/,
+      ],
+      "vertical-align": [/^(middle|top|bottom)$/],
+      display: [/^(block|inline-block|inline)$/],
+    },
+  },
+});
+
+
 
     // ✅ Save blog post
     const blog = new Blog({
       title,
-      thumbnail: thumbnailUrl,
+      thumbnail: thumbnail,
       content: sanitizedContent,
     });
 
